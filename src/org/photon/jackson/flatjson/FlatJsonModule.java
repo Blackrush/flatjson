@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.databind.Module;
 
 public class FlatJsonModule extends Module {
-    public static final Version VERSION = new Version(0, 1, 0, "", "org.photon.jackson.flatjson", "flatjson");
+    public static final Version VERSION = new Version(0, 1, 1, "", "org.photon.jackson", "flatjson");
 
     @Override
     public String getModuleName() {
