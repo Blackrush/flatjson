@@ -2,11 +2,12 @@
 <metadata>
   <groupId>org.photon.jackson</groupId>
   <artifactId>flatjson</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
   <versioning>
     <versions>
-      <version>0.1.0</version>
+      <version>0.1.1</version>
+      <version>0.1.2</version>
     </versions>
-    <lastUpdated>20131111123739</lastUpdated>
+    <lastUpdated>20131111215018</lastUpdated>
   </versioning>
 </metadata>

@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.photon.jackson</groupId>
   <artifactId>flatjson</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.2</version>
   <licenses>
     <license>
       <name>The MIT License</name>
