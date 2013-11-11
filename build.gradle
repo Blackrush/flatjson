@@ -1,0 +1,37 @@
+group = 'org.photon.jackson'
+version = '0.1.0'
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply from: 'deploy.gradle'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile "cglib:cglib:$cglibVersion"
+    compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+    testCompile "junit:junit:$junitVersion"
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src']
+        }
+    }
+    test {
+        java {
+            srcDirs = ['test']
+        }
+    }
+}
+
+javadoc {
+    source sourceSets.main.java
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '1.8'
+}
