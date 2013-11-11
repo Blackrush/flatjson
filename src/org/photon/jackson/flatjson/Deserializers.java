@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.deser.impl.PropertyBasedObjectIdGenerator;
 import com.fasterxml.jackson.databind.deser.impl.ReadableObjectId;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMethod;
+import com.fasterxml.jackson.databind.util.Converter;
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.LazyLoader;
 
@@ -42,24 +43,40 @@ public final class Deserializers {
         public Object deserialize(JsonParser jp, DeserializationContext ctx) throws IOException {
             JavaType jt = getJavaType(member, ctx);
             BeanDescription bd = getBeanDescription(ctx, jt);
-            AnnotatedMember member = Utils.getObjectIdMember(bd);
+            Converter<Object, Object> converter = null;
 
+            while (bd.getObjectIdInfo() == null) {
+                //noinspection unchecked
+                converter = (Converter<Object, Object>) ctx.getConfig().getHandlerInstantiator()
+                        .converterInstance(ctx.getConfig(), member, jt.getRawClass());
+
+                if (converter == null) throw new IllegalStateException("can't deserialize " + jt);
+
+                jt = converter.getInputType(ctx.getTypeFactory());
+                bd = getBeanDescription(ctx, jt);
+            }
+
+            AnnotatedMember member = Utils.getObjectIdMember(bd);
             if (member == null) throw new IllegalStateException(String.format(
-                        "unknown property `%s' on `%s'", bd.getObjectIdInfo().getPropertyName(), bd.getType()));
+                    "unknown property `%s' on `%s'", bd.getObjectIdInfo().getPropertyName(), bd.getType()));
 
             Object id = jp.readValueAs(member.getRawType());
 
             final ReadableObjectId roi = ctx.findObjectId(id, new FakeObjectIdGenerator(bd.getBeanClass(), member));
-            if (roi.item != null) {
-                return roi.item;
-            } else {
-                return Enhancer.create(jt.getRawClass(), new LazyLoader() {
+
+            Object item = roi.item;
+
+            if (item == null) {
+                item = Enhancer.create(jt.getRawClass(), new LazyLoader() {
                     @Override
                     public Object loadObject() throws Exception {
                         return roi.item;
                     }
                 });
             }
+
+            if (converter == null) return item;
+            else return converter.convert(item);
         }
     }
 

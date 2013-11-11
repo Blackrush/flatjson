@@ -12,17 +12,6 @@ public class FlatJsonIntrospector extends AnnotationIntrospector {
     }
 
     @Override
-    public Object findSerializer(Annotated am) {
-        Object serializer = super.findSerializer(am);
-
-        if (serializer == null && am.hasAnnotation(ManyToOne.class)) {
-            serializer = Serializers.ManyToOne.class;
-        }
-
-        return serializer;
-    }
-
-    @Override
     public Object findContentSerializer(Annotated am) {
         Object serializer = super.findContentSerializer(am);
 

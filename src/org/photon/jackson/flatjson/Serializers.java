@@ -16,20 +16,6 @@ public final class Serializers {
                 .forSerialization(provider.getConfig(), SimpleType.construct(value), provider.getConfig());
     }
 
-    public static class ManyToOne extends JsonSerializer<Object> {
-
-        @Override
-        public void serialize(Object value, JsonGenerator jgen, SerializerProvider provider) throws IOException {
-            BeanDescription bd = getBeanDescription(value.getClass(), provider);
-            AnnotatedMember member = Utils.getObjectIdMember(bd);
-
-            if (member == null) throw new IllegalStateException(String.format(
-                    "unknown property `%s' on `%s'", bd.getObjectIdInfo().getPropertyName(), bd.getClassInfo()));
-
-            provider.defaultSerializeValue(member.getValue(value), jgen);
-        }
-    }
-
     public static class OneToMany extends JsonSerializer<Object> {
 
         @Override
