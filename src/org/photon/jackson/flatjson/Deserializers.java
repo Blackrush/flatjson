@@ -1,21 +1,19 @@
-
 package org.photon.jackson.flatjson;
 
 import com.fasterxml.jackson.annotation.ObjectIdGenerator;
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.*;
-import com.fasterxml.jackson.databind.deser.Hack;
-import com.fasterxml.jackson.databind.deser.ValueInstantiator;
+import com.fasterxml.jackson.databind.BeanDescription;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.deser.impl.PropertyBasedObjectIdGenerator;
 import com.fasterxml.jackson.databind.deser.impl.ReadableObjectId;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMethod;
-import com.fasterxml.jackson.databind.type.CollectionType;
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.LazyLoader;
 
 import java.io.IOException;
-import java.util.Collection;
 
 public final class Deserializers {
 
@@ -30,25 +28,6 @@ public final class Deserializers {
     public static BeanDescription getBeanDescription(DeserializationContext ctx, JavaType jt) {
         return ctx.getConfig().getClassIntrospector()
                 .forDeserializationWithBuilder(ctx.getConfig(), jt, ctx.getConfig());
-    }
-
-    public static ValueInstantiator findCollectionValueInstantiator(DeserializationContext ctx, JavaType jt) throws JsonMappingException {
-        BeanDescription bd = getBeanDescription(ctx, jt);
-        ValueInstantiator vi = ctx.getFactory().findValueInstantiator(ctx, bd);
-
-        if (vi == null) {
-            if (jt.isInterface()) {
-                Class<?> implClazz = Hack.findCollectionCallback(jt.getRawClass().getName());
-                if (implClazz == null) throw new IllegalStateException("can't find any implementation for " + jt);
-
-                bd = getBeanDescription(ctx, jt.narrowBy(implClazz));
-                vi = ctx.getFactory().findValueInstantiator(ctx, bd);
-            }
-
-            // more to come...
-        }
-
-        return vi;
     }
 
     public static class ManyToOne extends JsonDeserializer<Object> {
@@ -74,7 +53,7 @@ public final class Deserializers {
             if (roi.item != null) {
                 return roi.item;
             } else {
-                return Enhancer.create(this.member.getRawType(), new LazyLoader() {
+                return Enhancer.create(jt.getRawClass(), new LazyLoader() {
                     @Override
                     public Object loadObject() throws Exception {
                         return roi.item;
@@ -84,7 +63,7 @@ public final class Deserializers {
         }
     }
 
-    public static class OneToMany extends JsonDeserializer<Collection<Object>> {
+    public static class OneToMany extends JsonDeserializer<Object> {
 
         private final AnnotatedMember member;
 
@@ -93,38 +72,27 @@ public final class Deserializers {
         }
 
         @Override
-        public Collection<Object> deserialize(JsonParser jp, DeserializationContext ctx) throws IOException {
-            JavaType jt = getJavaType(member, ctx);
-            BeanDescription bd = getBeanDescription(ctx, jt.getContentType());
+        public Object deserialize(JsonParser jp, DeserializationContext ctx) throws IOException {
+            JavaType jt = getJavaType(member, ctx).getContentType();
+            BeanDescription bd = getBeanDescription(ctx, jt);
             AnnotatedMember member = Utils.getObjectIdMember(bd);
 
             if (member == null) throw new IllegalStateException(String.format(
                     "unknown property `%s' on `%s'", bd.getObjectIdInfo().getPropertyName(), bd.getType()));
 
-            @SuppressWarnings("unchecked")
-            Collection<Object> result = (Collection<Object>) findCollectionValueInstantiator(ctx, jt)
-                    .createUsingDefault(ctx);
+            Object id = jp.readValueAs(member.getRawType());
 
-            JsonDeserializer<Object> des = ctx.findRootValueDeserializer(CollectionType.construct(
-                    jt.getRawClass(), ctx.constructType(member.getRawType())));
-
-            for (Object id : (Iterable) des.deserialize(jp, ctx)) {
-                final ReadableObjectId roi = ctx.findObjectId(id,
-                        new FakeObjectIdGenerator(bd.getBeanClass(), member));
-
-                if (roi.item != null) {
-                    result.add(roi.item);
-                } else {
-                    result.add(Enhancer.create(bd.getBeanClass(), new LazyLoader() {
-                        @Override
-                        public Object loadObject() throws Exception {
-                            return roi.item;
-                        }
-                    }));
-                }
+            final ReadableObjectId roi = ctx.findObjectId(id, new FakeObjectIdGenerator(bd.getBeanClass(), member));
+            if (roi.item != null) {
+                return roi.item;
+            } else {
+                return Enhancer.create(jt.getRawClass(), new LazyLoader() {
+                    @Override
+                    public Object loadObject() throws Exception {
+                        return roi.item;
+                    }
+                });
             }
-
-            return result;
         }
     }
 

@@ -16,14 +16,6 @@ public final class Serializers {
                 .forSerialization(provider.getConfig(), SimpleType.construct(value), provider.getConfig());
     }
 
-    public static Object first(Iterable<Object> values) {
-        return values.iterator().next();
-    }
-
-    public static boolean isEmpty(Iterable<Object> values) {
-        return !values.iterator().hasNext();
-    }
-
     public static class ManyToOne extends JsonSerializer<Object> {
 
         @Override
@@ -38,26 +30,17 @@ public final class Serializers {
         }
     }
 
-    public static class OneToMany extends JsonSerializer<Iterable<Object>> {
+    public static class OneToMany extends JsonSerializer<Object> {
 
         @Override
-        public void serialize(Iterable<Object> values, JsonGenerator jgen, SerializerProvider provider) throws IOException {
-            jgen.writeStartArray();
+        public void serialize(Object value, JsonGenerator jgen, SerializerProvider provider) throws IOException {
+            BeanDescription bd = getBeanDescription(value.getClass(), provider);
+            AnnotatedMember member = Utils.getObjectIdMember(bd);
 
-            if (!Serializers.isEmpty(values)) {
-                BeanDescription bd = getBeanDescription(Serializers.first(values).getClass(), provider);
-                AnnotatedMember member = Utils.getObjectIdMember(bd);
+            if (member == null) throw new IllegalStateException(String.format(
+                    "unknown property `%s' on `%s'", bd.getObjectIdInfo().getPropertyName(), bd.getClassInfo()));
 
-                if (member == null) throw new IllegalStateException(String.format(
-                        "unknown property `%s' on `%s'", bd.getObjectIdInfo().getPropertyName(), bd.getClassInfo()));
-
-                for (Object value : values) {
-                    Object id = member.getValue(value);
-                    provider.defaultSerializeValue(id, jgen);
-                }
-            }
-
-            jgen.writeEndArray();
+            provider.defaultSerializeValue(member.getValue(value), jgen);
         }
     }
 }
