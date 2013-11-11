@@ -10,7 +10,6 @@ import com.fasterxml.jackson.databind.deser.impl.PropertyBasedObjectIdGenerator;
 import com.fasterxml.jackson.databind.deser.impl.ReadableObjectId;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMethod;
-import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import com.fasterxml.jackson.databind.type.CollectionType;
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.LazyLoader;
@@ -31,17 +30,6 @@ public final class Deserializers {
     public static BeanDescription getBeanDescription(DeserializationContext ctx, JavaType jt) {
         return ctx.getConfig().getClassIntrospector()
                 .forDeserializationWithBuilder(ctx.getConfig(), jt, ctx.getConfig());
-    }
-
-    public static AnnotatedMember getObjectIdMember(BeanDescription bd) {
-        String property = bd.getObjectIdInfo().getPropertyName();
-
-        for (BeanPropertyDefinition bpd : bd.findProperties()) {
-            if (bpd.getName().equals(property)) {
-                return bpd.getAccessor();
-            }
-        }
-        return null;
     }
 
     public static ValueInstantiator getValueInstantiator(DeserializationContext ctx, JavaType jt) throws JsonMappingException {
@@ -68,7 +56,7 @@ public final class Deserializers {
         public Object deserialize(JsonParser jp, DeserializationContext ctx) throws IOException {
             JavaType jt = getJavaType(member, ctx);
             BeanDescription bd = getBeanDescription(ctx, jt);
-            AnnotatedMember member = getObjectIdMember(bd);
+            AnnotatedMember member = Utils.getObjectIdMember(bd);
 
             if (member == null) throw new IllegalStateException(String.format(
                         "unknown property `%s' on `%s'", bd.getObjectIdInfo().getPropertyName(), bd.getType()));
@@ -101,7 +89,7 @@ public final class Deserializers {
         public Collection<Object> deserialize(JsonParser jp, DeserializationContext ctx) throws IOException {
             JavaType jt = getJavaType(member, ctx);
             BeanDescription bd = getBeanDescription(ctx, jt.getContentType());
-            AnnotatedMember member = getObjectIdMember(bd);
+            AnnotatedMember member = Utils.getObjectIdMember(bd);
 
             if (member == null) throw new IllegalStateException(String.format(
                     "unknown property `%s' on `%s'", bd.getObjectIdInfo().getPropertyName(), bd.getType()));
