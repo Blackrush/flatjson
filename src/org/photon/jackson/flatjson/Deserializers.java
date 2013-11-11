@@ -32,16 +32,23 @@ public final class Deserializers {
                 .forDeserializationWithBuilder(ctx.getConfig(), jt, ctx.getConfig());
     }
 
-    public static ValueInstantiator getValueInstantiator(DeserializationContext ctx, JavaType jt) throws JsonMappingException {
-        if (jt.isInterface()) {
-            Class<? extends Collection> fallback = Hack.findCollectionCallback(jt.getRawClass().getName());
-            if (fallback == null) throw new IllegalStateException(String.format(
-                    "can't create `%s'", jt));
+    public static ValueInstantiator findCollectionValueInstantiator(DeserializationContext ctx, JavaType jt) throws JsonMappingException {
+        BeanDescription bd = getBeanDescription(ctx, jt);
+        ValueInstantiator vi = ctx.getFactory().findValueInstantiator(ctx, bd);
 
-            return ctx.getFactory().findValueInstantiator(ctx, getBeanDescription(ctx, jt.narrowBy(fallback)));
+        if (vi == null) {
+            if (jt.isInterface()) {
+                Class<?> implClazz = Hack.findCollectionCallback(jt.getRawClass().getName());
+                if (implClazz == null) throw new IllegalStateException("can't find any implementation for " + jt);
+
+                bd = getBeanDescription(ctx, jt.narrowBy(implClazz));
+                vi = ctx.getFactory().findValueInstantiator(ctx, bd);
+            }
+
+            // more to come...
         }
 
-        return ctx.getFactory().findValueInstantiator(ctx, getBeanDescription(ctx, jt));
+        return vi;
     }
 
     public static class ManyToOne extends JsonDeserializer<Object> {
@@ -95,7 +102,7 @@ public final class Deserializers {
                     "unknown property `%s' on `%s'", bd.getObjectIdInfo().getPropertyName(), bd.getType()));
 
             @SuppressWarnings("unchecked")
-            Collection<Object> result = (Collection<Object>) getValueInstantiator(ctx, jt)
+            Collection<Object> result = (Collection<Object>) findCollectionValueInstantiator(ctx, jt)
                     .createUsingDefault(ctx);
 
             JsonDeserializer<Object> des = ctx.findRootValueDeserializer(CollectionType.construct(
