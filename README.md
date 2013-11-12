@@ -19,7 +19,7 @@ repositories {
 }
 
 dependencies {
-  compile 'org.photon.jackson:flatjson:0.1.0'
+  compile 'org.photon.jackson:flatjson:0.1.2'
 }
 ```
 
